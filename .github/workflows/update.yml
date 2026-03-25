@@ -14,10 +14,10 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install dependencies
-        # 🌟 核武升級：安裝 playwright 同埋隱形 Chromium 瀏覽器
+        # 🌟 核心修復：加咗 --with-deps，確保 Linux 系統零件齊全！
         run: |
           pip install pandas beautifulsoup4 playwright
-          playwright install chromium
+          playwright install chromium --with-deps
       - name: Run Scraper
         run: python scraper.py
       - name: Commit and Push
