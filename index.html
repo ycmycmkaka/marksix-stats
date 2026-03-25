@@ -28,11 +28,10 @@
         .num-ball { display: inline-block; width: 28px; height: 28px; line-height: 28px; border-radius: 50%; margin: 0 2px; font-weight: bold; font-size: 13px; box-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
         .special-box { padding: 4px; border: 2px dashed #ff9900; border-radius: 8px; display: inline-block; background: #fffcf0; }
         
-        .stat-tag { padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+        .stat-tag { padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 12px; white-space: nowrap;}
         .consec-yes { background: #e6f4ea; color: #1e8e3e; } 
         .consec-no { background: #fce8e6; color: #d93025; }
         
-        /* 🌟 重複號碼嘅 Highlight 樣式 */
         .repeat-nums { font-weight: bold; color: #d93025; background: #fdf2f2; padding: 2px 6px; border-radius: 4px; }
         
         @media (max-width: 600px) { .dashboard { grid-template-columns: 1fr; } }
@@ -70,7 +69,7 @@ Papa.parse(csvUrl, {
         let totalBalls = 0; 
         let s = { 
             oe: {'6單 0雙':0, '5單 1雙':0, '4單 2雙':0, '3單 3雙':0, '2單 4雙':0, '1單 5雙':0, '0單 6雙':0}, 
-            consec: {'Yes':0, 'No':0}, 
+            consec: {}, // 🌟 變成空 Object，自動裝入幾多個連續
             repeats: {'0個':0, '1個':0, '2個+':0}, 
             zones: {},
             colors: {'紅波':0, '藍波':0, '綠波':0}
@@ -81,9 +80,11 @@ Papa.parse(csvUrl, {
             totalDraws++;
             
             if(s.oe[row.odd_even] !== undefined) s.oe[row.odd_even]++;
-            if(row.consecutive === 'Yes') s.consec['Yes']++; else s.consec['No']++;
             
-            // 🌟 智能讀取，只拎 "個" 字前面嘅數字去計 Bar Chart
+            // 🌟 讀取連續數量
+            let consecVal = row['consecutive'] || '0 個連續';
+            s.consec[consecVal] = (s.consec[consecVal] || 0) + 1;
+            
             let repeatCount = parseInt((row.repeats || "0").split("個")[0]) || 0;
             if(repeatCount === 0) s.repeats['0個']++; 
             else if(repeatCount === 1) s.repeats['1個']++; 
@@ -103,22 +104,28 @@ Papa.parse(csvUrl, {
             });
         });
 
-        function drawCard(title, obj, defaultColor, customTotal, sortMethod) {
+        function drawCard(title, statObj, cardType, customTotal) {
             let calcTotal = customTotal || totalDraws;
             let sorted;
-            if (sortMethod === 'keep') {
-                sorted = Object.entries(obj);
+            if (cardType === 'keep_oe') {
+                sorted = Object.entries(statObj);
             } else {
-                sorted = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+                sorted = Object.entries(statObj).sort((a,b)=>b[1]-a[1]);
             }
 
             let h = `<div class="stat-card"><h3>${title}</h3>`;
             sorted.forEach(i => {
                 let p = calcTotal > 0 ? ((i[1]/calcTotal)*100).toFixed(1) : 0;
-                let barColor = defaultColor;
+                let barColor = "#0055a4"; // Default Blue
+                
+                // 智能顏色控制
                 if(i[0] === '紅波') barColor = '#e60000';
                 if(i[0] === '藍波') barColor = '#0000e6';
                 if(i[0] === '綠波') barColor = '#00b300';
+                if(cardType === 'consec') {
+                    if (i[0] !== '0 個連續') barColor = '#1e8e3e';
+                    else barColor = '#d93025';
+                }
                 
                 h += `<div class="bar-row"><div class="bar-label">${i[0]}</div><div class="bar-track"><div class="bar-fill" style="width:${p}%; background:${barColor}"></div></div><div class="bar-pct">${p}%</div></div>`;
             });
@@ -127,14 +134,14 @@ Papa.parse(csvUrl, {
 
         document.getElementById('dashboard-container').innerHTML = `
             <div class="dashboard">
-                ${drawCard('顏色分佈 (全7球)', s.colors, '#999', totalBalls, 'sort')}
-                ${drawCard('主號碼單雙分佈', s.oe, '#0055a4', totalDraws, 'keep')}
-                ${drawCard('主號碼連續', s.consec, '#1e8e3e', totalDraws, 'sort')}
-                ${drawCard('主號碼重複', s.repeats, '#0055a4', totalDraws, 'sort')}
-                ${drawCard('主號碼分區', s.zones, '#0055a4', totalDraws, 'sort')}
+                ${drawCard('顏色分佈 (全7球)', s.colors, 'color', totalBalls)}
+                ${drawCard('主號碼單雙分佈', s.oe, 'keep_oe', totalDraws)}
+                ${drawCard('主號碼連續', s.consec, 'consec', totalDraws)}
+                ${drawCard('主號碼重複', s.repeats, 'repeats', totalDraws)}
+                ${drawCard('主號碼分區', s.zones, 'zones', totalDraws)}
             </div>`;
 
-        let html = '<table><thead><tr><th>攪珠日期</th><th>主號碼 (6 Balls)</th><th>特別號碼</th><th>主號碼單雙</th><th>連續</th><th>上期重複冧莊</th><th>分區</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>攪珠日期</th><th>主號碼 (6 Balls)</th><th>特別號碼</th><th>主號碼單雙</th><th>連續號碼</th><th>上期重複冧莊</th><th>分區</th></tr></thead><tbody>';
         data.forEach(row => {
             let balls = ''; 
             for(let i=1; i<=6; i++) {
@@ -145,18 +152,23 @@ Papa.parse(csvUrl, {
             let spColor = getBallColor(row.special);
             let spHtml = `<div class="special-box"><span class="num-ball" style="background:${spColor.bg}; border:2px solid ${spColor.border}; color:${spColor.color}; margin:0;">${row.special}</span></div>`;
             
-            // 🌟 幫重複號碼加靚靚樣式：如果括號入面有數字，就變成紅色 Highlight
-            let formattedRepeats = row.repeats;
+            let formattedRepeats = row.repeats || '';
             if (formattedRepeats.includes("(")) {
                 formattedRepeats = formattedRepeats.replace("(", "<br><span class='repeat-nums'>(").replace(")", ")</span>");
             }
+            
+            // 🌟 升級連續號碼標籤
+            let consecVal = row['consecutive'] || '0 個連續';
+            let consecHtml = consecVal !== '0 個連續' ? 
+                `<span class="stat-tag consec-yes">${consecVal}</span>` : 
+                `<span class="stat-tag consec-no">${consecVal}</span>`;
 
             html += `<tr>
-                <td style="font-weight:bold; color:#555;">${row.date}</td>
+                <td style="font-weight:bold; color:#555; white-space:nowrap;">${row.date}</td>
                 <td><div style="white-space:nowrap;">${balls}</div></td>
                 <td>${spHtml}</td>
                 <td><strong>${row.odd_even}</strong></td>
-                <td><span class="stat-tag ${row.consecutive==='Yes'?'consec-yes':'consec-no'}">${row.consecutive}</span></td>
+                <td>${consecHtml}</td>
                 <td style="line-height:1.4;">${formattedRepeats}</td>
                 <td>${row.zone}</td>
             </tr>`;
