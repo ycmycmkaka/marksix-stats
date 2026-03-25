@@ -1,0 +1,27 @@
+name: Mark Six Auto Scraper
+
+on:
+  schedule:
+    # 每日 UTC 時間 15:00 行 (即香港時間 23:00)
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install pandas requests beautifulsoup4
+      - name: Run Scraper
+        run: python scraper.py
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'Mark Six Bot'
+          git config --global user.email 'bot@marksix.hk'
+          git add data.csv
+          git commit -m "Auto-update: Latest Mark Six results" || exit 0
+          git push
