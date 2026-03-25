@@ -8,8 +8,11 @@ def scrape_marksix_data():
 
     print("🚀 啟動 Playwright 抽六合彩資料...")
 
-    urls = [
+urls = [
         "https://www.lotteryextreme.com/marksix/results",
+        "https://www.lotteryextreme.com/marksix/results2", # 歷史第 2 頁
+        "https://www.lotteryextreme.com/marksix/results3", # 歷史第 3 頁
+        "https://www.lotteryextreme.com/marksix/results4", # 歷史第 4 頁
         "https://en.lottolyzer.com/history/hong-kong/mark-six"
     ]
 
