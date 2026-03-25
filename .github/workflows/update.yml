@@ -2,7 +2,6 @@ name: Mark Six Auto Scraper
 
 on:
   schedule:
-    # 每日 UTC 時間 15:00 行 (即香港時間 23:00)
     - cron: '0 15 * * *'
   workflow_dispatch:
 
@@ -15,7 +14,10 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install dependencies
-        run: pip install pandas requests beautifulsoup4
+        # 🌟 核武升級：安裝 playwright 同埋隱形 Chromium 瀏覽器
+        run: |
+          pip install pandas beautifulsoup4 playwright
+          playwright install chromium
       - name: Run Scraper
         run: python scraper.py
       - name: Commit and Push
