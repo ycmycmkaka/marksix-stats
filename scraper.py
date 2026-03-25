@@ -6,15 +6,12 @@ from playwright.sync_api import sync_playwright
 def scrape_marksix_data():
     all_draws = []
 
-    print("🚀 啟動 Playwright 抽六合彩資料 (防超時長氣袋版)...")
+    print("🚀 啟動 Playwright 抽六合彩資料 (完美 300 期大數據版)...")
 
-    # 加大樣本庫，等個單雙比例回歸正常！
+    # 🌟 破案關鍵：Lottolyzer 預設每頁得 50 期，我哋直接叫佢連揭 6 頁！
     urls = [
-        "https://www.lotteryextreme.com/marksix/results",
-        "https://www.lotteryextreme.com/marksix/results2",
-        "https://www.lotteryextreme.com/marksix/results3",
-        "https://www.lotteryextreme.com/marksix/results4",
-        "https://en.lottolyzer.com/history/hong-kong/mark-six"
+        f"https://en.lottolyzer.com/history/hong-kong/mark-six/page/{i}/per-page/50/summary-view"
+        for i in range(1, 7)
     ]
 
     with sync_playwright() as p:
@@ -25,9 +22,9 @@ def scrape_marksix_data():
         page = context.new_page()
 
         for url in urls:
-            print(f"📡 讀取: {url}")
+            print(f"📡 讀取第 {urls.index(url)+1} 頁: {url[-25:]}")
             try:
-                # 🌟 致命武器：將 Timeout 加大到 60 秒 (60000ms)，等佢有充足時間 Load 歷史數據
+                # 畀充足時間佢 Load 歷史數據
                 page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 page.wait_for_timeout(2000)
 
@@ -35,32 +32,7 @@ def scrape_marksix_data():
 
                 found_in_page = False
 
-                # 方案 1：LotteryExtreme 格式 (ChatGPT 神級公式)
-                pattern1 = re.compile(
-                    r'(\d{2}/\d{2}/\d{4})\s+\w+\s+\(\d{2}/\d{3}\).*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b.*?'
-                    r'\b([1-9]|[1-4]\d)\b',
-                    re.S
-                )
-
-                for m in pattern1.finditer(text):
-                    date_str = m.group(1)
-                    nums = [int(m.group(i)) for i in range(2, 9)]
-                    if len(nums) == 7:
-                        all_draws.append({
-                            "date": pd.to_datetime(date_str, dayfirst=True).strftime("%Y-%m-%d"),
-                            "n1": sorted(nums[:6])[0], "n2": sorted(nums[:6])[1], "n3": sorted(nums[:6])[2],
-                            "n4": sorted(nums[:6])[3], "n5": sorted(nums[:6])[4], "n6": sorted(nums[:6])[5],
-                            "special": nums[6]
-                        })
-                        found_in_page = True
-
-                # 方案 2：Lottolyzer 格式 (ChatGPT 神級公式)
+                # Lottolyzer 專用神級公式 (完美匹配)
                 pattern2 = re.compile(
                     r'(\d{4}-\d{2}-\d{2})\s+'
                     r'((?:[1-9]|[1-4]\d)(?:,(?:[1-9]|[1-4]\d)){5})\s+'
@@ -81,7 +53,7 @@ def scrape_marksix_data():
                         found_in_page = True
 
                 if found_in_page:
-                    print("   ✅ 成功搵到資料")
+                    print("   ✅ 成功搵到 50 期資料")
                 else:
                     print("   ⚠️ 呢頁搵唔到有效結果行")
 
@@ -102,16 +74,13 @@ def scrape_marksix_data():
 
 
 def calculate_metrics(df):
-    if df.empty:
-        return df
-
+    if df.empty: return df
     prev_numbers = set()
     results = []
 
     for _, row in df.iterrows():
         record = row.to_dict()
         nums = [int(record[f"n{i}"]) for i in range(1, 7)]
-
         record["odd_even"] = f"{sum(1 for n in nums if n % 2 != 0)}單 {sum(1 for n in nums if n % 2 == 0)}雙"
         record["consecutive"] = "Yes" if any(nums[i+1] - nums[i] == 1 for i in range(len(nums)-1)) else "No"
 
@@ -121,7 +90,6 @@ def calculate_metrics(df):
 
         zones = sorted(set((n - 1) // 10 + 1 for n in nums))
         record["zone"] = f"{len(zones)}個區 ({','.join(map(str, zones))})"
-
         results.append(record)
 
     # 計完走勢，排返最新到最舊畀網頁顯示
@@ -132,7 +100,6 @@ def calculate_metrics(df):
 
 def main():
     raw_df = scrape_marksix_data()
-
     if raw_df.empty:
         print("❌ 抽唔到任何資料")
         raise SystemExit(1)
@@ -140,7 +107,7 @@ def main():
     final_df = calculate_metrics(raw_df)
     cols = ["date", "n1", "n2", "n3", "n4", "n5", "n6", "special", "odd_even", "consecutive", "repeats", "zone"]
     final_df[cols].to_csv("data.csv", index=False, encoding="utf-8-sig")
-    print(f"✅ 成功寫入 {len(final_df)} 期數據到 data.csv")
+    print(f"✅ 成功寫入 {len(final_df)} 期大數據到 data.csv")
 
 if __name__ == "__main__":
     main()
