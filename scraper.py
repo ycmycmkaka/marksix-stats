@@ -1,80 +1,73 @@
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import re
+import time
+from playwright.sync_api import sync_playwright
 
 def scrape_marksix_data():
     all_draws = []
     
-    # 🌟 救星降臨：直接攻入你搵到嘅台灣無防護資料庫
-    urls = [
-        "https://www.pilio.idv.tw/ltohk/list.asp", # 最新 50 期
-        "https://www.pilio.idv.tw/ltohk/list.asp?year=2026",
-        "https://www.pilio.idv.tw/ltohk/list.asp?year=2025",
-        "https://www.pilio.idv.tw/ltohk/list.asp?year=2024"
-    ]
+    print("🚀 啟動【核武級黑客技巧】：真實瀏覽器模擬 (Playwright)")
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-    
-    for url in urls:
-        print(f"📡 嘗試潛入台灣彩票資料庫: {url[-15:]}...")
-        try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            # 台灣網頁有時會用 Big5 編碼，確保中文字同符號唔會變亂碼
-            resp.encoding = resp.apparent_encoding 
-            
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, 'html.parser')
+    # 啟動 Playwright 引擎
+    with sync_playwright() as p:
+        # 真正打開一個隱形嘅 Chromium 瀏覽器
+        browser = p.chromium.launch(headless=True)
+        # 扮成最普通嘅 Mac 機 Chrome 用戶，完美融入人群
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
+        
+        # 目標：全球最大彩票庫 (用真瀏覽器硬爆 Cloudflare 防護)
+        urls = [
+            "https://www.lotteryextreme.com/hong_kong/mark_six_results",
+            "https://www.lotteryextreme.com/hong_kong/mark_six_results2"
+        ]
+        
+        for url in urls:
+            print(f"📡 駕駛真瀏覽器駛入: {url[-20:]}...")
+            try:
+                # 🌟 必殺技：等待網絡靜止 (networkidle)！等佢防護罩解開，畫面 100% Load 完先郁手
+                page.goto(url, wait_until="networkidle", timeout=30000)
+                time.sleep(2) # 停 2 秒扮真人睇緊嘢
+                
+                html = page.content()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                found_in_page = False
                 for row in soup.find_all('tr'):
-                    # 抽出一行入面所有嘅文字
                     row_text = row.get_text(" ", strip=True)
-                    
-                    # 🌟 智能日期辨識 (支援 2026/03/24, 2026-03-24, 或者 2026年3月24日)
-                    date_match = re.search(r'202[4-9][-/年]\d{1,2}[-/月]\d{1,2}', row_text)
+                    # 搵 2026-03-24 呢種日期
+                    date_match = re.search(r'202[3-9]-[0-1][0-9]-[0-3][0-9]', row_text)
                     
                     if date_match:
-                        raw_date = date_match.group(0)
-                        # 清洗日期格式變成 YYYY-MM-DD
-                        clean_date = re.sub(r'[年/]', '-', raw_date)
-                        clean_date = re.sub(r'月|日', '', clean_date)
-                        
-                        # 將 2024-3-4 變成 2024-03-04 方便排序
-                        try:
-                            d_obj = datetime.strptime(clean_date, "%Y-%m-%d")
-                            clean_date = d_obj.strftime("%Y-%m-%d")
-                        except: pass
-                        
-                        # 🌟 智能號碼辨識：抽出所有 1 到 49 嘅數字
                         nums = [int(x) for x in re.findall(r'\b\d{1,2}\b', row_text) if 1 <= int(x) <= 49]
-                        
-                        # 確保號碼唔重複，因為有期數或者其他雜質
                         unique_nums = []
                         for n in nums:
                             if n not in unique_nums: unique_nums.append(n)
                             
-                        # 如果抽到 7 個或者以上嘅有效波 (頭 6 個通常係主波，第 7 個係特號)
                         if len(unique_nums) >= 7:
-                            # 由於 Pilio 網頁排版，特號通常係最後嗰粒波
-                            main_balls = sorted(unique_nums[:6])
-                            special_ball = unique_nums[6]
-                            
+                            m_balls = sorted(unique_nums[:6])
                             all_draws.append({
-                                'date': clean_date,
-                                'n1': main_balls[0], 'n2': main_balls[1], 'n3': main_balls[2],
-                                'n4': main_balls[3], 'n5': main_balls[4], 'n6': main_balls[5],
-                                'special': special_ball
+                                'date': date_match.group(0),
+                                'n1': m_balls[0], 'n2': m_balls[1], 'n3': m_balls[2],
+                                'n4': m_balls[3], 'n5': m_balls[4], 'n6': m_balls[5],
+                                'special': unique_nums[6]
                             })
-                print("   ✅ 成功讀取本頁數據！")
-        except Exception as e:
-            print(f"   ⚠️ 失敗: {e}")
+                            found_in_page = True
+                            
+                if found_in_page:
+                    print("   ✅ 成功突破防護罩，取得最新數據！")
+            except Exception as e:
+                print(f"   ⚠️ 讀取失敗: {e}")
+                
+        browser.close()
 
     df = pd.DataFrame(all_draws)
     if not df.empty:
         df['date_obj'] = pd.to_datetime(df['date'], errors='coerce')
-        # 剷走重複日期，確保乾淨，然後由舊至新排列
         return df.dropna(subset=['date_obj']).drop_duplicates('date_obj').sort_values('date_obj', ascending=True)
     return pd.DataFrame()
 
@@ -84,7 +77,6 @@ def calculate_metrics(df):
     results = []
     
     for _, row in df.iterrows():
-        # 只用 6 個主波嚟計走勢
         nums = [int(row[f'n{i}']) for i in range(1, 7)]
         row['odd_even'] = f"{sum(1 for n in nums if n%2!=0)}單 {sum(1 for n in nums if n%2==0)}雙"
         row['consecutive'] = "Yes" if any(nums[i+1] - nums[i] == 1 for i in range(len(nums)-1)) else "No"
@@ -102,7 +94,7 @@ def calculate_metrics(df):
     return final_df
 
 def main():
-    print("🚀 啟動 香港六合彩 (Pilio 專攻版) 爬蟲...")
+    print("🚀 啟動 香港六合彩 終極核武級 (Playwright 真瀏覽器) 爬蟲...")
     raw_df = scrape_marksix_data()
     
     if not raw_df.empty:
@@ -111,7 +103,7 @@ def main():
         final_df[cols].to_csv('data.csv', index=False)
         print(f"✅ 大功告成！成功寫入 {len(final_df)} 期六合彩數據。")
     else:
-        print("❌ 警告：搵唔到數據！強制終止。")
+        print("❌ 警告：連核武器都失敗！強制終止。")
         exit(1)
 
 if __name__ == "__main__":
