@@ -73,11 +73,18 @@ def calculate_metrics(df):
 
     for _, row in df.iterrows():
         record = row.to_dict()
+        # 六合彩只用 6 個主波計走勢
         nums = [int(record[f"n{i}"]) for i in range(1, 7)]
         record["odd_even"] = f"{sum(1 for n in nums if n % 2 != 0)}單 {sum(1 for n in nums if n % 2 == 0)}雙"
-        record["consecutive"] = "Yes" if any(nums[i+1] - nums[i] == 1 for i in range(len(nums)-1)) else "No"
+        
+        # 🌟 升級：精準計算連續數量
+        consec_count = 0
+        for i in range(len(nums)-1):
+            if nums[i+1] - nums[i] == 1:
+                consec_count += 1
+        record["consecutive"] = f"{consec_count} 個連續"
 
-        # 🌟 升級版「重複號碼」偵測系統
+        # 上期冧莊 (保留括號號碼)
         curr_set = set(nums)
         if prev_numbers:
             intersect = sorted(list(curr_set.intersection(prev_numbers)))
