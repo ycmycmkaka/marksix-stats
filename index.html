@@ -65,26 +65,28 @@ Papa.parse(csvUrl, {
 
         // --- 統計 ---
         let totalDraws = 0;
-        let totalBalls = 0; // 用嚟計顏色嘅總波數
+        let totalBalls = 0; 
         let s = { 
-            oe: {}, 
+            // 🌟 預先設定好所有 7 個單雙 Combo，等佢可以按順序排
+            oe: {'6單 0雙':0, '5單 1雙':0, '4單 2雙':0, '3單 3雙':0, '2單 4雙':0, '1單 5雙':0, '0單 6雙':0}, 
             consec: {'Yes':0, 'No':0}, 
             repeats: {'0個':0, '1個':0, '2個+':0}, 
             zones: {},
-            colors: {'紅波':0, '藍波':0, '綠波':0} // 🌟 新增：顏色統計器
+            colors: {'紅波':0, '藍波':0, '綠波':0}
         };
 
         data.forEach(row => {
             if(!row.n1) return; 
             totalDraws++;
             
-            s.oe[row.odd_even] = (s.oe[row.odd_even] || 0) + 1;
+            // 累加單雙次數
+            if(s.oe[row.odd_even] !== undefined) s.oe[row.odd_even]++;
+            
             if(row.consecutive === 'Yes') s.consec['Yes']++; else s.consec['No']++;
             let r = parseInt(row.repeats) || 0;
             if(r === 0) s.repeats['0個']++; else if(r === 1) s.repeats['1個']++; else s.repeats['2個+']++;
             if(row.zone) { let z = row.zone.charAt(0) + '個區'; s.zones[z] = (s.zones[z] || 0) + 1; }
 
-            // 🌟 統計全 7 球嘅顏色
             let allBalls = [row.n1, row.n2, row.n3, row.n4, row.n5, row.n6, row.special];
             allBalls.forEach(b => {
                 if(b) {
@@ -98,15 +100,21 @@ Papa.parse(csvUrl, {
         });
 
         // --- 畫 Dashboard 卡片 ---
-        // 加入 customTotal 參數，因為顏色係用「總波數」計，其他係用「期數」計
-        function drawCard(title, obj, defaultColor, customTotal) {
+        function drawCard(title, obj, defaultColor, customTotal, sortMethod) {
             let calcTotal = customTotal || totalDraws;
-            let sorted = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+            let sorted;
+            
+            // 🌟 單雙分佈保留原本嘅順序 (6單至0單)
+            if (sortMethod === 'keep') {
+                sorted = Object.entries(obj);
+            } else {
+                sorted = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+            }
+
             let h = `<div class="stat-card"><h3>${title}</h3>`;
             sorted.forEach(i => {
-                let p = calcTotal > 0 ? ((i[1]/calcTotal)*100).toFixed(1) : 0; // 計到小數點後 1 個位
+                let p = calcTotal > 0 ? ((i[1]/calcTotal)*100).toFixed(1) : 0;
                 
-                // 🌟 智能進度條變色：見到紅藍綠字就轉相應顏色
                 let barColor = defaultColor;
                 if(i[0] === '紅波') barColor = '#e60000';
                 if(i[0] === '藍波') barColor = '#0000e6';
@@ -117,14 +125,13 @@ Papa.parse(csvUrl, {
             return h + '</div>';
         }
 
-        // 🌟 將顏色圖表加入 Dashboard 第一個位
         document.getElementById('dashboard-container').innerHTML = `
             <div class="dashboard">
-                ${drawCard('顏色分佈 (全7球)', s.colors, '#999', totalBalls)}
-                ${drawCard('單雙分佈 (Top 4)', Object.fromEntries(Object.entries(s.oe).slice(0,4)), '#0055a4')}
-                ${drawCard('主號碼連續', s.consec, '#1e8e3e')}
-                ${drawCard('主號碼重複', s.repeats, '#0055a4')}
-                ${drawCard('主號碼分區', s.zones, '#0055a4')}
+                ${drawCard('顏色分佈 (全7球)', s.colors, '#999', totalBalls, 'sort')}
+                ${drawCard('主號碼單雙分佈', s.oe, '#0055a4', totalDraws, 'keep')}
+                ${drawCard('主號碼連續', s.consec, '#1e8e3e', totalDraws, 'sort')}
+                ${drawCard('主號碼重複', s.repeats, '#0055a4', totalDraws, 'sort')}
+                ${drawCard('主號碼分區', s.zones, '#0055a4', totalDraws, 'sort')}
             </div>`;
 
         // --- 畫表格 ---
