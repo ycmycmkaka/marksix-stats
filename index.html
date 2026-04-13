@@ -39,10 +39,6 @@
     }
 
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
       margin-bottom: 18px;
     }
 
@@ -54,26 +50,40 @@
 
     .subline {
       color: var(--muted);
-      margin-top: 6px;
+      margin-top: 8px;
       font-size: 14px;
       line-height: 1.6;
     }
 
-    .btn {
-      border: none;
-      cursor: pointer;
+    .filter-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-size: 14px;
+      color: var(--muted);
       font-weight: 700;
-      color: white;
-      background: linear-gradient(135deg, #1f7cff, #21b3ff);
-      border-radius: 14px;
-      padding: 13px 18px;
-      box-shadow: 0 8px 18px rgba(31, 124, 255, 0.22);
-      white-space: nowrap;
+    }
+
+    .filter-input {
+      width: 120px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
     }
 
     .metrics {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
       margin-bottom: 20px;
     }
@@ -318,42 +328,47 @@
 
     @media (max-width: 760px) {
       .container { padding: 14px; }
-      .header { flex-direction: column; align-items: stretch; }
       .metrics { grid-template-columns: 1fr; }
       .layout-3, .layout-5 { grid-template-columns: 1fr; }
       .balls-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .analysis-row { grid-template-columns: 1fr 120px 52px; }
       h1 { font-size: 28px; }
       .metric-value { font-size: 24px; }
+      .filter-bar { justify-content: flex-start; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div>
-        <h1>香港六合彩 (Mark Six) 走勢分析</h1>
-        <div class="subline" id="status">載入中…</div>
-      </div>
-      <button id="reloadBtn" class="btn">重新載入資料</button>
+      <h1>香港六合彩 (Mark Six) 走勢分析</h1>
+      <div class="subline" id="status">最後更新時間：載入中…</div>
+    </div>
+
+    <div class="filter-bar">
+      <label for="drawLimitInput" class="filter-label">統計期數：</label>
+      <input
+        id="drawLimitInput"
+        class="filter-input"
+        type="number"
+        min="1"
+        step="1"
+        placeholder="全部"
+      />
     </div>
 
     <div class="metrics">
       <div class="card">
-        <div class="metric-label">總期數</div>
+        <div class="metric-label">統計期數</div>
         <div class="metric-value" id="totalDraws">-</div>
       </div>
       <div class="card">
-        <div class="metric-label">資料來源</div>
-        <div class="metric-value">data.csv</div>
+        <div class="metric-label">最後更新時間</div>
+        <div class="metric-value" id="lastUpdated">-</div>
       </div>
       <div class="card">
         <div class="metric-label">最熱門主號碼</div>
         <div class="metric-value" id="topMain">-</div>
-      </div>
-      <div class="card">
-        <div class="metric-label">最多出現波色</div>
-        <div class="metric-value" id="topColor">-</div>
       </div>
     </div>
 
@@ -409,8 +424,11 @@
   </div>
 
   <script>
+    let allRows = [];
+    let lastUpdatedDisplay = "-";
+
     function getBallColor(num) {
-      let n = parseInt(num);
+      const n = parseInt(num, 10);
       const red = [1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46];
       const blue = [3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48];
       const green = [5,6,11,16,17,21,22,27,28,32,33,38,39,43,44,49];
@@ -421,8 +439,25 @@
       return { bg: '#fff', border: '#ccc', color: '#333', name: '未知' };
     }
 
-    function setStatusText(text) {
-      document.getElementById("status").textContent = text;
+    function getFilteredRowsByLimit(rows) {
+      const rawValue = document.getElementById("drawLimitInput")?.value?.trim() || "";
+      if (!rawValue) return rows;
+
+      const limit = parseInt(rawValue, 10);
+      if (isNaN(limit) || limit <= 0) return rows;
+
+      return rows.slice(0, limit);
+    }
+
+    function formatDateTimeForDisplay(dateInput) {
+      const d = new Date(dateInput);
+      if (Number.isNaN(d.getTime())) return "-";
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function setLastUpdatedText(text) {
+      document.getElementById("status").textContent = `最後更新時間：${text}`;
+      document.getElementById("lastUpdated").textContent = text;
     }
 
     function renderProgressRows(containerId, items) {
@@ -467,7 +502,7 @@
         for (let i = 0; i < rows.length; i++) {
           const rowNums = [];
           for (let j = 1; j <= 6; j++) {
-            const v = parseInt(rows[i]['n' + j]);
+            const v = parseInt(rows[i]['n' + j], 10);
             if (!isNaN(v)) rowNums.push(v);
           }
 
@@ -487,17 +522,16 @@
       return results;
     }
 
-    function renderMetricCards(totalDraws, hotNumbers, colorStats) {
+    function renderMetrics(totalDraws, hotNumbers) {
       document.getElementById("totalDraws").textContent = totalDraws;
-
       const topMain = hotNumbers[0];
       document.getElementById("topMain").textContent = topMain ? `${topMain.num} (${topMain.value}次)` : "-";
-
-      const topColor = Object.entries(colorStats).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById("topColor").textContent = topColor ? topColor[0] : "-";
+      document.getElementById("lastUpdated").textContent = lastUpdatedDisplay;
     }
 
     function renderDashboard(data) {
+      const filteredRows = getFilteredRowsByLimit(data);
+
       let totalDraws = 0;
       let totalBalls = 0;
 
@@ -512,34 +546,34 @@
       let mainFreq = {};
       for (let i = 1; i <= 49; i++) mainFreq[i] = 0;
 
-      data.forEach(row => {
+      filteredRows.forEach(row => {
         if (!row.n1) return;
         totalDraws++;
 
         for (let i = 1; i <= 6; i++) {
-          const v = parseInt(row['n' + i]);
+          const v = parseInt(row['n' + i], 10);
           if (!isNaN(v) && mainFreq[v] !== undefined) mainFreq[v] += 1;
         }
 
         if (s.oe[row.odd_even] !== undefined) s.oe[row.odd_even]++;
 
-        let consecVal = row['consecutive'] || '0 個連續';
+        const consecVal = row['consecutive'] || '0 個連續';
         s.consec[consecVal] = (s.consec[consecVal] || 0) + 1;
 
-        let repeatCount = parseInt((row.repeats || "0").split("個")[0]) || 0;
+        const repeatCount = parseInt((row.repeats || "0").split("個")[0], 10) || 0;
         if (repeatCount === 0) s.repeats['0個']++;
         else if (repeatCount === 1) s.repeats['1個']++;
         else s.repeats['2個+']++;
 
         if (row.zone) {
-          let z = row.zone.charAt(0) + '個區';
+          const z = row.zone.charAt(0) + '個區';
           s.zones[z] = (s.zones[z] || 0) + 1;
         }
 
-        let allBalls = [row.n1, row.n2, row.n3, row.n4, row.n5, row.n6, row.special];
+        const allBalls = [row.n1, row.n2, row.n3, row.n4, row.n5, row.n6, row.special];
         allBalls.forEach(b => {
           if (b) {
-            let colorInfo = getBallColor(b);
+            const colorInfo = getBallColor(b);
             if (s.colors[colorInfo.name] !== undefined) {
               s.colors[colorInfo.name]++;
               totalBalls++;
@@ -558,12 +592,11 @@
         .sort((a, b) => a.value - b.value || a.num - b.num)
         .slice(0, 5);
 
-      const validRows = data.filter(r => r.n1);
-      const missing15Plus = calculateMissingStreaks(validRows)
+      const missing15Plus = calculateMissingStreaks(filteredRows)
         .filter(item => item.value >= 15)
         .sort((a, b) => b.value - a.value || a.num - b.num);
 
-      renderMetricCards(totalDraws, hotNumbers, s.colors);
+      renderMetrics(totalDraws, hotNumbers);
 
       renderNumberBoxes("hotMainNumbers", hotNumbers, "次");
       renderNumberBoxes("coldMainNumbers", coldNumbers, "次");
@@ -622,20 +655,20 @@
       validRows.forEach(row => {
         let balls = '';
         for (let i = 1; i <= 6; i++) {
-          let c = getBallColor(row['n' + i]);
+          const c = getBallColor(row['n' + i]);
           balls += `<span class="num-ball" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.color}">${row['n' + i]}</span>`;
         }
 
-        let spColor = getBallColor(row.special);
-        let spHtml = `<div class="special-box"><span class="num-ball" style="background:${spColor.bg}; border:2px solid ${spColor.border}; color:${spColor.color}; margin:0;">${row.special}</span></div>`;
+        const spColor = getBallColor(row.special);
+        const spHtml = `<div class="special-box"><span class="num-ball" style="background:${spColor.bg}; border:2px solid ${spColor.border}; color:${spColor.color}; margin:0;">${row.special}</span></div>`;
 
         let formattedRepeats = row.repeats || '-';
         if (formattedRepeats.includes("(")) {
           formattedRepeats = formattedRepeats.replace("(", "<br><span class='repeat-nums'>(").replace(")", ")</span>");
         }
 
-        let consecVal = row['consecutive'] || '0 個連續';
-        let consecHtml = consecVal !== '0 個連續'
+        const consecVal = row['consecutive'] || '0 個連續';
+        const consecHtml = consecVal !== '0 個連續'
           ? `<span class="table-pill green">${consecVal}</span>`
           : `<span class="table-pill red">${consecVal}</span>`;
 
@@ -654,23 +687,38 @@
       document.getElementById('table-container').innerHTML = html;
     }
 
-    function loadAll() {
+    async function loadAll() {
       const csvUrl = "data.csv?t=" + new Date().getTime();
-      setStatusText("數據由 AI 每日自動更新及智能分色");
+
+      try {
+        const headRes = await fetch(csvUrl, { method: "HEAD" });
+        const lastMod = headRes.headers.get("Last-Modified");
+
+        if (lastMod) {
+          lastUpdatedDisplay = formatDateTimeForDisplay(lastMod);
+        } else {
+          lastUpdatedDisplay = "-";
+        }
+        setLastUpdatedText(lastUpdatedDisplay);
+      } catch {
+        lastUpdatedDisplay = "-";
+        setLastUpdatedText(lastUpdatedDisplay);
+      }
 
       Papa.parse(csvUrl, {
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-          let data = results.data;
+          const data = results.data;
           if (!data.length || !data[0].n1) {
             document.getElementById('table-container').innerHTML = "<p style='text-align:center; color:red;'>未搵到數據，請稍後再試。</p>";
             return;
           }
 
-          renderDashboard(data);
-          renderTable(data);
+          allRows = data.filter(r => r.n1);
+          renderDashboard(allRows);
+          renderTable(allRows);
         },
         error: function(err) {
           document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center; padding:20px;"><b>讀取 CSV 失敗：</b><br>${err}</p>`;
@@ -678,7 +726,9 @@
       });
     }
 
-    document.getElementById("reloadBtn").addEventListener("click", loadAll);
+    document.getElementById("drawLimitInput").addEventListener("input", () => {
+      if (allRows.length) renderDashboard(allRows);
+    });
 
     loadAll();
   </script>
