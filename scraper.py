@@ -2,14 +2,14 @@ import pandas as pd
 import re
 from playwright.sync_api import sync_playwright
 
+MAX_PAGES = 40
+EMPTY_PAGE_STOP = 3
+
 def scrape_marksix_data():
     all_draws = []
-    print("🚀 啟動 Playwright 抽六合彩資料 (完美 300 期大數據版)...")
+    print("🚀 啟動 Playwright 抽六合彩資料...")
 
-    urls = [
-        f"https://en.lottolyzer.com/history/hong-kong/mark-six/page/{i}/per-page/50/summary-view"
-        for i in range(1, 7)
-    ]
+    empty_streak = 0
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -18,8 +18,10 @@ def scrape_marksix_data():
         )
         page = context.new_page()
 
-        for page_num, url in enumerate(urls, start=1):
-            print(f"📡 讀取第 {page_num} 頁: {url[-25:]}")
+        for page_num in range(1, MAX_PAGES + 1):
+            url = f"https://en.lottolyzer.com/history/hong-kong/mark-six/page/{page_num}/per-page/50/summary-view"
+            print(f"📡 讀取第 {page_num} 頁: {url}")
+
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 page.wait_for_timeout(2000)
@@ -27,24 +29,22 @@ def scrape_marksix_data():
                 text = page.locator("body").inner_text()
                 found_in_page = False
 
-                # 修正重點：
-                # 原本寫法 ([1-9]|[1-4]\d) 會令 44 呢類兩位數
-                # 喺 special number 個位有機會先食咗第一個 4
-                # 所以一定要改成 ([1-4]\d|[1-9])，兩位數放前面
-                pattern2 = re.compile(
+                pattern = re.compile(
                     r'(\d{4}-\d{2}-\d{2})\s+'
                     r'((?:[1-4]\d|[1-9])(?:,(?:[1-4]\d|[1-9])){5})\s+'
                     r'([1-4]\d|[1-9])'
                 )
 
-                for m in pattern2.finditer(text):
+                page_draws = []
+
+                for m in pattern.finditer(text):
                     date_str = m.group(1)
                     main_nums = [int(x) for x in m.group(2).split(",")]
                     special = int(m.group(3))
 
                     if len(main_nums) == 6:
                         sorted_nums = sorted(main_nums)
-                        all_draws.append({
+                        page_draws.append({
                             "date": date_str,
                             "n1": sorted_nums[0],
                             "n2": sorted_nums[1],
@@ -57,12 +57,24 @@ def scrape_marksix_data():
                         found_in_page = True
 
                 if found_in_page:
-                    print("   ✅ 成功搵到 50 期資料")
+                    print(f"   ✅ 成功搵到 {len(page_draws)} 期資料")
+                    all_draws.extend(page_draws)
+                    empty_streak = 0
                 else:
                     print("   ⚠️ 呢頁搵唔到有效結果行")
+                    empty_streak += 1
+
+                if empty_streak >= EMPTY_PAGE_STOP:
+                    print(f"⏹️ 已連續 {EMPTY_PAGE_STOP} 頁冇資料，停止繼續抓取")
+                    break
 
             except Exception as e:
                 print(f"   ⚠️ 讀取失敗 (可能超時): {e}")
+                empty_streak += 1
+
+                if empty_streak >= EMPTY_PAGE_STOP:
+                    print(f"⏹️ 已連續 {EMPTY_PAGE_STOP} 頁失敗/冇資料，停止繼續抓取")
+                    break
 
         browser.close()
 
@@ -86,21 +98,18 @@ def calculate_metrics(df):
     for _, row in df.iterrows():
         record = row.to_dict()
 
-        # 六合彩只用 6 個主波計走勢
         nums = [int(record[f"n{i}"]) for i in range(1, 7)]
 
         odd_count = sum(1 for n in nums if n % 2 != 0)
         even_count = sum(1 for n in nums if n % 2 == 0)
         record["odd_even"] = f"{odd_count}單 {even_count}雙"
 
-        # 計算連續數量
         consec_count = 0
         for i in range(len(nums) - 1):
             if nums[i + 1] - nums[i] == 1:
                 consec_count += 1
         record["consecutive"] = f"{consec_count} 個連續"
 
-        # 上期冧莊
         curr_set = set(nums)
         if prev_numbers:
             intersect = sorted(list(curr_set.intersection(prev_numbers)))
