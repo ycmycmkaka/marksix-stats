@@ -805,7 +805,7 @@
 
         statsMap[comboKey].count += 1;
 
-        if (statsMap[comboKey].lastDate === "-") {
+        if (statsMap[comboKey].gap === "-") {
           statsMap[comboKey].gap = `${index}期`;
         }
       });
