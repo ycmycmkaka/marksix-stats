@@ -35,11 +35,11 @@
     .container {
       max-width: 1480px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 20px;
     }
 
     .header {
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
 
     h1 {
@@ -60,7 +60,7 @@
       justify-content: flex-end;
       align-items: center;
       gap: 10px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
 
@@ -72,7 +72,7 @@
 
     .filter-input {
       width: 120px;
-      padding: 10px 12px;
+      padding: 9px 12px;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: #fff;
@@ -84,15 +84,15 @@
     .metrics {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 22px;
+      padding: 18px;
       box-shadow: var(--shadow);
     }
 
@@ -112,26 +112,27 @@
     .layout-3 {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .layout-5 {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 18px;
-      margin-bottom: 20px;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .layout-2 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+      align-items: start;
     }
 
     .section-title {
-      margin: 0 0 16px;
+      margin: 0 0 14px;
       font-size: 21px;
       font-weight: 800;
       letter-spacing: -0.01em;
@@ -140,14 +141,14 @@
     .balls-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .ball-stat {
       background: var(--panel-2);
       border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 16px 10px;
+      padding: 14px 8px;
       text-align: center;
     }
 
@@ -170,18 +171,18 @@
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 18px;
       box-shadow: var(--shadow);
     }
 
     .analysis-title,
     .compare-title {
-      margin: 0 0 16px;
+      margin: 0 0 14px;
       font-size: 18px;
       font-weight: 800;
       color: var(--blue);
       text-align: center;
-      padding-bottom: 12px;
+      padding-bottom: 10px;
       border-bottom: 4px solid #e5eefb;
     }
 
@@ -190,7 +191,7 @@
       grid-template-columns: 1fr 140px 56px;
       gap: 10px;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-weight: 700;
       color: #4d5e74;
     }
@@ -293,7 +294,7 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .table-note {
@@ -312,6 +313,17 @@
       border-collapse: collapse;
       background: white;
       min-width: 980px;
+    }
+
+    .combo-table-wrap table {
+      min-width: 0 !important;
+      width: 100%;
+    }
+
+    .combo-table-wrap th,
+    .combo-table-wrap td {
+      padding: 10px 12px;
+      font-size: 14px;
     }
 
     th, td {
@@ -527,7 +539,7 @@
           <h2 class="section-title" style="margin-bottom:0;">3區組合統計（10種）</h2>
           <div class="table-note">只統計主號碼剛好覆蓋 3 個區</div>
         </div>
-        <div class="table-wrap" id="zoneCombo3Table"></div>
+        <div class="table-wrap combo-table-wrap" id="zoneCombo3Table"></div>
       </div>
 
       <div class="card">
@@ -535,7 +547,7 @@
           <h2 class="section-title" style="margin-bottom:0;">4區組合統計（5種）</h2>
           <div class="table-note">只統計主號碼剛好覆蓋 4 個區</div>
         </div>
-        <div class="table-wrap" id="zoneCombo4Table"></div>
+        <div class="table-wrap combo-table-wrap" id="zoneCombo4Table"></div>
       </div>
     </div>
 
