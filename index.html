@@ -795,7 +795,6 @@
         statsMap[combo] = {
           combo,
           count: 0,
-          lastDate: "-",
           gap: "-"
         };
       });
@@ -807,7 +806,6 @@
         statsMap[comboKey].count += 1;
 
         if (statsMap[comboKey].lastDate === "-") {
-          statsMap[comboKey].lastDate = row.date || "-";
           statsMap[comboKey].gap = `${index}期`;
         }
       });
@@ -818,7 +816,6 @@
             <tr>
               <th>${size}區組合</th>
               <th>Total</th>
-              <th>最近出現</th>
               <th>目前間隔</th>
             </tr>
           </thead>
@@ -831,7 +828,6 @@
           <tr>
             <td><span class="table-pill blue">${item.combo}</span></td>
             <td><strong>${item.count}</strong></td>
-            <td>${item.lastDate}</td>
             <td>${item.gap}</td>
           </tr>
         `;
