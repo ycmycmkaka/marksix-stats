@@ -436,6 +436,9 @@
       .compare-input-row { flex-direction: column; align-items: stretch; }
       .compare-btn { width: 100%; }
     }
+    .number-filter-input { width: 220px; max-width: 100%; }
+    .filter-feedback { margin: -6px 0 18px; color: #666; font-size: 14px; line-height: 1.6; }
+    .num-ball.filter-hit { outline: 3px solid #b77900; outline-offset: 2px; box-shadow: 0 0 0 5px #fff3cd; }
   </style>
 </head>
 <body>
@@ -456,6 +459,9 @@
         placeholder="全部"
       />
 
+      <label for="numberFilterInput" class="filter-label">主號碼篩選：</label>
+      <input id="numberFilterInput" class="filter-input number-filter-input" type="text" placeholder="例如：8 18" aria-describedby="numberFilterFeedback" />
+      <button id="clearNumberFilterBtn" class="compare-btn" type="button">清除號碼</button>
       <label for="zoneFilterSelect" class="filter-label">分區篩選：</label>
       <select id="zoneFilterSelect" class="filter-input">
         <option value="">全部</option>
@@ -467,6 +473,7 @@
       </select>
     </div>
 
+    <div id="numberFilterFeedback" class="filter-feedback" role="status" aria-live="polite">輸入 1 至 6 個主號碼，以空格或逗號分隔；只顯示同時包含全部輸入號碼嘅期數（不包括特別號碼）。</div>
     <div class="metrics">
       <div class="card">
         <div class="metric-label">統計期數</div>
@@ -969,10 +976,35 @@
       renderZoneComboStats(filteredRows, 4, "zoneCombo4Table");
     }
 
+    function parseFilterNumbers(input) {
+      const normalized = input.normalize("NFKC").trim();
+      if (!normalized) return { numbers: [] };
+      const tokens = normalized.split(/[\s,，、;；]+/).filter(Boolean);
+      if (!tokens.length || tokens.some(token => !/^\d+$/.test(token))) {
+        return { error: "請輸入整數，以空格或逗號分隔，例如：8 18。" };
+      }
+      const numbers = [...new Set(tokens.map(Number))];
+      if (numbers.some(n => n < 1 || n > 49)) {
+        return { error: "主號碼必須介乎 1 至 49。" };
+      }
+      if (numbers.length > 6) return { error: "每期只有 6 個主號碼，請最多輸入 6 個不同號碼。" };
+      return { numbers: numbers.sort((a, b) => a - b) };
+    }
+
+    function matchesFilterNumbers(row, numbers) {
+      const mainNumbers = Array.from({ length: 6 }, (_, i) => Number(row["n" + (i + 1)]));
+      return numbers.every(n => mainNumbers.includes(n));
+    }
+
+
     function renderTable(data) {
       const selectedZone = document.getElementById("zoneFilterSelect")?.value || "";
 
+      const parsedFilter = parseFilterNumbers(document.getElementById("numberFilterInput").value);
+      const filterNumbers = parsedFilter.numbers || [];
+      document.getElementById("numberFilterInput").setAttribute("aria-invalid", String(Boolean(parsedFilter.error)));
       const validRows = data.filter(r => {
+        if (parsedFilter.error || !matchesFilterNumbers(r, filterNumbers)) return false;
         if (!r.n1) return false;
         if (!selectedZone) return true;
 
@@ -985,9 +1017,10 @@
         return getZoneCountValue(rowNums) === parseInt(selectedZone, 10);
       });
 
-      document.getElementById("tableNote").textContent = selectedZone
-        ? `顯示 ${selectedZone}個區記錄，共 ${validRows.length} 期`
-        : `顯示全部 ${validRows.length} 期`;
+      document.getElementById("tableNote").textContent = `顯示 ${validRows.length} 期${selectedZone ? `（${selectedZone}個區）` : ""}`;
+      document.getElementById("numberFilterFeedback").textContent = parsedFilter.error || (filterNumbers.length
+        ? `主號碼同時包含 ${filterNumbers.join("、")}：共 ${validRows.length} 期${selectedZone ? "（已套用分區篩選）" : ""}。符合號碼以金色外框標示；上方統計維持原有統計範圍。`
+        : "輸入 1 至 6 個主號碼，以空格或逗號分隔；只顯示同時包含全部輸入號碼嘅期數（不包括特別號碼）。");
 
       let html = '<table><thead><tr><th>攪珠日期</th><th>主號碼 (6 Balls)</th><th>特別號碼</th><th>主號碼單雙</th><th>連續號碼</th><th>上期重複冧莊</th><th>分區</th></tr></thead><tbody>';
 
@@ -995,7 +1028,7 @@
         let balls = '';
         for (let i = 1; i <= 6; i++) {
           const c = getBallColor(row['n' + i]);
-          balls += `<span class="num-ball" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.color}">${row['n' + i]}</span>`;
+          balls += `<span class="num-ball${filterNumbers.includes(Number(row['n' + i])) ? " filter-hit" : ""}" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.color}">${row['n' + i]}</span>`;
         }
 
         const spColor = getBallColor(row.special);
@@ -1022,6 +1055,9 @@
         </tr>`;
       });
 
+      if (!validRows.length) {
+        html += `<tr><td colspan="7" class="empty-note">${parsedFilter.error ? "請修正上方輸入嘅主號碼。" : "冇符合篩選條件嘅期數。"}</td></tr>`;
+      }
       html += '</tbody></table>';
       document.getElementById('table-container').innerHTML = html;
     }
@@ -1064,6 +1100,15 @@
         }
       });
     }
+
+    document.getElementById("numberFilterInput").addEventListener("input", () => {
+      if (allRows.length) renderTable(allRows);
+    });
+    document.getElementById("clearNumberFilterBtn").addEventListener("click", () => {
+      document.getElementById("numberFilterInput").value = "";
+      if (allRows.length) renderTable(allRows);
+      document.getElementById("numberFilterInput").focus();
+    });
 
     document.getElementById("drawLimitInput").addEventListener("input", () => {
       if (allRows.length) {
