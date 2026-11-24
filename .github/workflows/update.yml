@@ -7,19 +7,22 @@ on:
 
 jobs:
   run-scraper:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
+
       - name: Install dependencies
-        # 🌟 核心修復：加咗 --with-deps，確保 Linux 系統零件齊全！
         run: |
           pip install pandas beautifulsoup4 playwright
           playwright install chromium --with-deps
+
       - name: Run Scraper
         run: python scraper.py
+
       - name: Commit and Push
         run: |
           git config --global user.name 'Mark Six Bot'
